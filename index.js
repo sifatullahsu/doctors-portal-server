@@ -72,9 +72,23 @@ async function run() {
       res.send(result);
     });
 
-    app.post('/add-doctor', async (req, res) => {
+    app.post('/doctors/add', async (req, res) => {
       const data = req.body;
       const result = await doctorsCollection.insertOne(data);
+
+      res.send(result);
+    });
+
+    app.patch('/doctors/edit/:id', async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+
+      const query = { _id: ObjectId(id) }
+      const updateDoc = {
+        $set: data
+      };
+
+      const result = await doctorsCollection.updateOne(query, updateDoc);
 
       res.send(result);
     });
