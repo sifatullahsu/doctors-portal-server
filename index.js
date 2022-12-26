@@ -23,6 +23,7 @@ async function run() {
   try {
     const db = client.db('our-doctors-portal');
 
+    const servicesCollection = db.collection('services');
     const appointmentsCollection = db.collection('appointments');
     const bookingsCollection = db.collection('bookings');
     const doctorsCollection = db.collection('doctors');
@@ -32,7 +33,7 @@ async function run() {
       const date = req.query.date;
 
       const query = {}
-      const appointments = await appointmentsCollection.find(query).toArray();
+      const appointments = await servicesCollection.find(query).toArray();
 
       const bookingsQuery = { "appointmentInfo.date": date }
       const bookings = await bookingsCollection.find(bookingsQuery).toArray();
@@ -50,7 +51,7 @@ async function run() {
 
     app.get('/services', async (req, res) => {
       const query = {}
-      const services = await appointmentsCollection.find(query).toArray();
+      const services = await servicesCollection.find(query).toArray();
 
       res.send(services);
     });
@@ -59,11 +60,40 @@ async function run() {
       const id = req.params.id;
 
       const query = { _id: ObjectId(id) }
-      const service = await appointmentsCollection.findOne(query);
+      const service = await servicesCollection.findOne(query);
+
+      const doctorsQuery = { email: { $in: service?.doctors } }
+      const doctors = await doctorsCollection.find(doctorsQuery).project({ name: 1, email: 1, _id: 0 }).toArray();
+
+      const doctorsProcess = doctors.map(i => {
+        return ({ value: i.email, label: `${i.name} (${i.email})` });
+      });
+
+      service?.doctors ? service.doctors = doctorsProcess : '';
 
       res.send(service);
     });
 
+    app.post('/services/add', async (req, res) => {
+      const data = req.body;
+      const result = await servicesCollection.insertOne(data);
+
+      res.send(result);
+    });
+
+    app.patch('/services/edit/:id', async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+
+      const query = { _id: ObjectId(id) }
+      const updateDoc = {
+        $set: data
+      };
+
+      const result = await servicesCollection.updateOne(query, updateDoc);
+
+      res.send(result);
+    });
 
     app.post('/booking', async (req, res) => {
       const data = req.body;
@@ -107,6 +137,20 @@ async function run() {
       const doctor = await doctorsCollection.findOne(query);
 
       res.send(doctor);
+    });
+
+    app.get('/doctors/name/:name', async (req, res) => {
+      const name = req.params.name;
+
+      const query = { name: { $text: { $search: name } } }
+      const doctors = await doctorsCollection.find(query).project({ name: 1, email: 1, _id: 0 }).toArray();
+
+      const dataProcess = doctors.map(i => {
+        return ({ value: i.email, label: `${i.name} (${i.email})` });
+      });
+
+
+      res.send(dataProcess);
     });
 
   }
