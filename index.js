@@ -52,8 +52,16 @@ async function run() {
     app.get('/services', async (req, res) => {
       const query = {}
       const services = await servicesCollection.find(query).toArray();
+      const doctors = await doctorsCollection.find({}).toArray();
 
-      res.send(services);
+      const final = services.map(service => {
+        const result = doctors.filter(doctor => service.doctors.includes(doctor.email));
+        service.doctors = result;
+
+        return service;
+      });
+
+      res.send(final);
     });
 
     app.get('/services/:id', async (req, res) => {
